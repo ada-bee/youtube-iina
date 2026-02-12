@@ -1,0 +1,29 @@
+{
+  "name": "YouTube",
+  "identifier": "xyz.brbc.youtube",
+  "version": "1.0.0",
+  "ghRepo": "ada-bee/youtube-iina",
+  "ghVersion": 1,
+  "description": "Browse and play YouTube videos in IINA",
+  "author": {
+    "name": "ada-bee"
+  },
+  "entry": "dist/main.js",
+  "globalEntry": "dist/global.js",
+  "sidebarTab": {
+    "name": "YouTube"
+  },
+  "permissions": [
+    "network-request",
+    "sidebar",
+    "show-alert",
+    "show-osd",
+    "file-system"
+  ],
+  "allowedDomains": [
+    "youtube.com",
+    "www.youtube.com",
+    "i.ytimg.com",
+    "yt3.ggpht.com"
+  ]
+}

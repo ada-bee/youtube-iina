@@ -1,0 +1,18 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "youtube-iina",
+      "devDependencies": {
+        "iina-plugin-definition": "^0.99.3",
+        "typescript": "^5.9.3",
+      },
+    },
+  },
+  "packages": {
+    "iina-plugin-definition": ["iina-plugin-definition@0.99.3", "", {}, "sha512-nj14Uaz+UaJzZgFFftLmpPgTpfQaDq0sQJInbUmAMTdzY9NTe0gORwqDhKW83i+Czu17wxlt6qUYlLQuwyj7Kg=="],
+
+    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+  }
+}

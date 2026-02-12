@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Sidebar</title>
+        <link rel="stylesheet" href="sidebar.css">
+    </head>
+    <body>
+        <header class="yt-header">
+            <div class="yt-header-controls">
+                <nav class="yt-tabs">
+                    <button class="yt-tab is-active" type="button" data-view="feed">Feed</button>
+                    <button class="yt-tab" type="button" data-view="subscriptions" hidden>Subscriptions</button>
+                    <button class="yt-tab" type="button" data-view="favorites">Channels</button>
+                </nav>
+                <div class="yt-header-actions">
+                    <button class="yt-icon-button yt-home-button" type="button" aria-label="Home" title="Home" data-home-refresh>
+                        <svg class="yt-home-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                            <path d="M8 2.2L2 7.2v6.6h4.2V9.4h3.6v4.4H14V7.2L8 2.2z" fill="currentColor"></path>
+                        </svg>
+                    </button>
+                    <button
+                        class="yt-icon-button yt-auth-button"
+                        type="button"
+                        aria-label="Login"
+                        title="Login"
+                        data-auth-toggle
+                    >
+                        <svg class="yt-auth-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                            <path d="M6 2v2H3v8h3v2H1V2h5zm4 3l4 3-4 3V9H5V7h5V5z" fill="currentColor"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form class="yt-search-form" data-search-form>
+                <div class="yt-search-shell">
+                    <input
+                        class="yt-search-input"
+                        type="search"
+                        placeholder="Search"
+                        autocomplete="off"
+                        data-search-input
+                    >
+                    <button class="yt-search-submit" type="submit" aria-label="Search" title="Search">
+                        <svg class="yt-search-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                            <path d="M11.6 10.2l3 3-1.4 1.4-3-3A5.5 5.5 0 1 1 11.6 10.2zM6.5 10.5A4 4 0 1 0 6.5 2.5a4 4 0 0 0 0 8z" fill="currentColor"></path>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+            <p class="yt-auth-status" data-auth-status>Anonymous mode</p>
+            <div class="yt-auth-panel" data-auth-panel hidden>
+                <p class="yt-auth-panel-title">Copy this code and follow the intructions in your browser to sign-in.</p>
+                <div class="yt-auth-panel-actions">
+                    <input class="yt-auth-panel-code" data-auth-code type="text" value="-" readonly aria-label="Login code">
+                    <a class="yt-auth-panel-link" data-auth-url href="https://youtube.com/activate" target="_blank" rel="noopener noreferrer">
+                        <span class="yt-auth-panel-link-text">youtube.com/activate</span>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <main class="yt-content">
+            <section class="yt-view is-active yt-feed-home" data-view="feed">
+                <p class="yt-empty" data-feed-empty>No videos yet. Add channels to build your feed.</p>
+                <p class="yt-empty" data-feed-status hidden></p>
+                <div class="yt-loading" data-feed-loading hidden role="status" aria-label="Loading">
+                    <span class="yt-spinner" aria-hidden="true"></span>
+                </div>
+                <ul class="yt-list" data-feed-favorites></ul>
+            </section>
+            <section class="yt-view" data-view="subscriptions">
+                <p class="yt-empty" data-subscriptions-empty>Sign in to load subscriptions.</p>
+                <p class="yt-empty" data-subscriptions-status hidden></p>
+                <div class="yt-loading" data-subscriptions-loading hidden role="status" aria-label="Loading">
+                    <span class="yt-spinner" aria-hidden="true"></span>
+                </div>
+                <ul class="yt-list" data-subscriptions-list></ul>
+            </section>
+            <section class="yt-view" data-view="search">
+                <p class="yt-empty" data-search-status>Search YouTube for channels and videos.</p>
+                <div class="yt-loading" data-search-loading hidden role="status" aria-label="Loading">
+                    <span class="yt-spinner" aria-hidden="true"></span>
+                </div>
+
+                <div class="yt-results" data-search-results>
+                    <section class="yt-results-section">
+                        <h2 class="yt-section-title">Channels</h2>
+                        <p class="yt-empty" data-channels-empty>No channels found.</p>
+                        <ul class="yt-list" data-channels-list></ul>
+                    </section>
+
+                    <section class="yt-results-section">
+                        <h2 class="yt-section-title">Videos</h2>
+                        <p class="yt-empty" data-videos-empty>No videos found.</p>
+                        <ul class="yt-list" data-videos-list></ul>
+                    </section>
+                </div>
+            </section>
+            <section class="yt-view" data-view="favorites">
+                <p class="yt-empty" data-favorites-empty>No channels yet. Add channels from search results.</p>
+                <ul class="yt-list" data-favorites-list></ul>
+            </section>
+        </main>
+
+        <script src="dist/sidebar.js"></script>
+    </body>
+</html>

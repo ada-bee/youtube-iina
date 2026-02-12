@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor/IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Node/npm
+node_modules/
+
+# Build artifacts
+build/
+dist/
+xyz.brbc.youtube.iinaplugin/dist/
+xyz.brbc.youtube.iinaplugin/ui/dist/
+
+# Env files
+.env
+.env.*
+.envrc
+
+# Local tooling
+.direnv/
+.opencode/
+
+# IINA artifacts
+*.iinaplgz
+*.iinaplugin-dev
