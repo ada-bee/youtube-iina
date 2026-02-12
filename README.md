@@ -1,6 +1,6 @@
 # YouTube IINA Plugin
 
-Plugin for browsing and playing YouTube videos in IINA from a sidebar UI. Includes anonymous mode (favorites-based feed + search) and logged-in mode (Home + Subscriptions). **Not affiliated with Google or YouTube.**
+Plugin for browsing and playing YouTube videos in IINA from a sidebar UI. Includes anonymous mode (favorites-based feed + search) and logged-in mode (Home + Subscriptions).
 
 ## Installation
 
@@ -24,10 +24,10 @@ Plugin for browsing and playing YouTube videos in IINA from a sidebar UI. Includ
 - Related video recommendations for what to watch next.
 - Channel/video search and channel favorites management.
 - Playback in IINA by opening standard YouTube watch URLs.
+- Optional SponsorBlock integration with per-segment controls (`ignore`, `ask`, `skip`) for Sponsor, Unpaid/Self Promotion, and Preview/Recap.
 
 ## Planned features
 
-- SponsorBlock integration
 - Watch state/progress display and reporting
 - Channel view
 
