@@ -1,5 +1,6 @@
 import {
     feedLoadingIndicator,
+    relatedLoadingIndicator,
     searchInput,
     searchLoadingIndicator,
     subscriptionsLoadingIndicator,
@@ -29,11 +30,13 @@ export function createNavigationController(): NavigationController {
                 activeView: getActiveView(),
                 isFeedLoading: state.feedState.isLoading,
                 isSubscriptionsLoading: state.subscriptionsState.isLoading,
+                isRelatedLoading: state.relatedState.isLoading,
                 isSearchLoading: state.searchState.isLoading
             },
             {
                 feedLoadingIndicator,
                 subscriptionsLoadingIndicator,
+                relatedLoadingIndicator,
                 searchLoadingIndicator
             }
         );
@@ -45,6 +48,9 @@ export function createNavigationController(): NavigationController {
             normalizedViewName = "feed";
         }
         if (viewName === "favorites" && state.appMode === "logged_in") {
+            normalizedViewName = "feed";
+        }
+        if (viewName === "related" && !state.currentPlaybackVideoId) {
             normalizedViewName = "feed";
         }
 

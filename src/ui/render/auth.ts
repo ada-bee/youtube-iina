@@ -19,10 +19,12 @@ export interface ModeTabsElements {
     feedTab: HTMLButtonElement | null;
     subscriptionsTab: HTMLButtonElement | null;
     favoritesTab: HTMLButtonElement | null;
+    relatedTab: HTMLButtonElement | null;
 }
 
 export interface ModeTabsDependencies {
     appMode: AppMode;
+    currentPlaybackVideoId: string;
     elements: ModeTabsElements;
     getActiveView: () => ViewName;
     setActiveView: (view: ViewName) => void;
@@ -72,8 +74,9 @@ export function renderAuthUi(state: AuthRenderState, elements: AuthRenderElement
 }
 
 export function renderModeTabs(dependencies: ModeTabsDependencies): void {
-    const { appMode, elements, getActiveView, setActiveView } = dependencies;
+    const { appMode, currentPlaybackVideoId, elements, getActiveView, setActiveView } = dependencies;
     const isLoggedIn = appMode === "logged_in";
+    const hasPlaybackVideo = currentPlaybackVideoId.trim().length > 0;
 
     if (elements.feedTab) {
         elements.feedTab.textContent = isLoggedIn ? "Home" : "Feed";
@@ -89,6 +92,11 @@ export function renderModeTabs(dependencies: ModeTabsDependencies): void {
         elements.favoritesTab.hidden = isLoggedIn;
     }
 
+    if (elements.relatedTab) {
+        elements.relatedTab.textContent = "Related";
+        elements.relatedTab.hidden = !hasPlaybackVideo;
+    }
+
     const currentView = getActiveView();
     if (currentView === "subscriptions" && !isLoggedIn) {
         setActiveView("feed");
@@ -96,6 +104,11 @@ export function renderModeTabs(dependencies: ModeTabsDependencies): void {
     }
 
     if (currentView === "favorites" && isLoggedIn) {
+        setActiveView("feed");
+        return;
+    }
+
+    if (currentView === "related" && !hasPlaybackVideo) {
         setActiveView("feed");
     }
 }

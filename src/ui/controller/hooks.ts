@@ -1,4 +1,5 @@
 import type {
+    PlaybackLifecycleEventPayload,
     SettingsSyncPayload
 } from "../../shared/messages";
 
@@ -7,6 +8,7 @@ import { MESSAGE_NAMES } from "../../shared/messages";
 interface HookControllerDependencies {
     iinaApi: typeof iina | undefined;
     onSettingsSync?: (payload: SettingsSyncPayload) => void;
+    onPlaybackLifecycleEvent?: (payload: PlaybackLifecycleEventPayload) => void;
 }
 
 export interface HookController {
@@ -38,6 +40,10 @@ export function createHookController(dependencies: HookControllerDependencies): 
 
         dependencies.iinaApi.onMessage(MESSAGE_NAMES.SettingsSync, (payload: SettingsSyncPayload) => {
             dependencies.onSettingsSync?.(payload);
+        });
+
+        dependencies.iinaApi.onMessage(MESSAGE_NAMES.PlaybackLifecycleEvent, (payload: PlaybackLifecycleEventPayload) => {
+            dependencies.onPlaybackLifecycleEvent?.(payload);
         });
 
         isBound = true;

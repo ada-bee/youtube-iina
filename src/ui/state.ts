@@ -1,5 +1,5 @@
 import { loadTvAuthCacheFromStorage } from "./storage/authCache";
-import { SEARCH_IDLE_STATUS_TEXT } from "./constants";
+import { RELATED_IDLE_TEXT, SEARCH_IDLE_STATUS_TEXT } from "./constants";
 import { loadFavoritesFromStorage } from "./storage/favorites";
 import {
     loadUiSettingsFromStorage,
@@ -23,8 +23,10 @@ export interface UiState {
     favorites: FavoriteChannel[];
     feedRefreshSequence: number;
     subscriptionsRefreshSequence: number;
+    relatedRefreshSequence: number;
     appMode: AppMode;
     activeView: ViewName;
+    currentPlaybackVideoId: string;
     authPending: boolean;
     authStatusMessage: string;
     authPanelState: DeviceCodeResponse | null;
@@ -36,6 +38,7 @@ export interface UiState {
     searchState: SearchState;
     feedState: FeedState;
     subscriptionsState: FeedState;
+    relatedState: FeedState;
 }
 
 export const state: UiState = {
@@ -43,8 +46,10 @@ export const state: UiState = {
     favorites: loadFavoritesFromStorage(),
     feedRefreshSequence: 0,
     subscriptionsRefreshSequence: 0,
+    relatedRefreshSequence: 0,
     appMode: "anonymous",
     activeView: "feed",
+    currentPlaybackVideoId: "",
     authPending: false,
     authStatusMessage: "",
     authPanelState: null,
@@ -70,6 +75,12 @@ export const state: UiState = {
         isLoading: false,
         items: [],
         status: "",
+        warning: ""
+    },
+    relatedState: {
+        isLoading: false,
+        items: [],
+        status: RELATED_IDLE_TEXT,
         warning: ""
     }
 };

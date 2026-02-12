@@ -7,6 +7,8 @@ import {
     HOME_ITEMS_LIMIT,
     HOME_PREFETCH_TARGET,
     LOGGED_IN_BROWSE_MAX_PAGES,
+    RELATED_ITEMS_LIMIT,
+    RELATED_PREFETCH_TARGET,
     SUBSCRIPTIONS_ITEMS_LIMIT,
     SUBSCRIPTIONS_PREFETCH_TARGET,
     TV_CLIENT_NAME,
@@ -306,6 +308,103 @@ export async function fetchLoggedInSubscriptionsFeed(dependencies: FetchLoggedIn
     return {
         ...result,
         items: result.items.slice(0, SUBSCRIPTIONS_ITEMS_LIMIT)
+    };
+}
+
+export async function fetchRelatedFeed(
+    videoId: string,
+    dependencies?: FetchLoggedInBrowseFeedDependencies
+): Promise<FeedFetchResult> {
+    const normalizedVideoId = videoId.trim();
+    if (!normalizedVideoId) {
+        return {
+            items: [],
+            diagnostics: createEmptyFeedParseDiagnostics(),
+            failureReason: "unknown_error"
+        };
+    }
+
+    const canUseTvPath = Boolean(dependencies && dependencies.isTvAuthAvailable());
+
+    let webConfig: Awaited<ReturnType<typeof getInnertubeConfig>> | null = null;
+    if (!canUseTvPath) {
+        try {
+            webConfig = await getInnertubeConfig();
+        } catch {
+            return {
+                items: [],
+                diagnostics: createEmptyFeedParseDiagnostics(),
+                failureReason: "unknown_error"
+            };
+        }
+    }
+
+    const result = await collectFeedItemsFromBrowsePages(
+        async (continuation?: string): Promise<PageFetchResult> => {
+            if (canUseTvPath && dependencies) {
+                return sendTvInnertubeRequest(
+                    "next",
+                    continuation ? { continuation } : { videoId: normalizedVideoId },
+                    FEED_TIMEOUT_MS,
+                    dependencies
+                );
+            }
+
+            if (!webConfig) {
+                return {
+                    failureReason: "unknown_error"
+                };
+            }
+
+            let response: Awaited<ReturnType<typeof sendHttpRequest>>;
+            try {
+                response = await sendHttpRequest(
+                    {
+                        method: "POST",
+                        url: buildInnertubeUrl("next", webConfig.apiKey),
+                        headers: buildWebInnertubeHeaders(webConfig),
+                        body: {
+                            context: {
+                                client: buildWebClientContext(webConfig)
+                            },
+                            ...(continuation
+                                ? { continuation }
+                                : { videoId: normalizedVideoId })
+                        }
+                    },
+                    FEED_TIMEOUT_MS
+                );
+            } catch {
+                return {
+                    failureReason: "unknown_error"
+                };
+            }
+
+            if (!response.ok || !response.text) {
+                return {
+                    failureReason: "http_error",
+                    statusCode: response.statusCode
+                };
+            }
+
+            try {
+                return {
+                    payload: JSON.parse(response.text)
+                };
+            } catch {
+                return {
+                    failureReason: "json_parse_error",
+                    statusCode: response.statusCode
+                };
+            }
+        },
+        RELATED_PREFETCH_TARGET,
+        LOGGED_IN_BROWSE_MAX_PAGES
+    );
+
+    return {
+        ...result,
+        items: result.items.slice(0, RELATED_ITEMS_LIMIT)
     };
 }
 

@@ -8,6 +8,7 @@ import { createEventsController } from "./events";
 import { createFeedController } from "./feed";
 import { createHookController } from "./hooks";
 import { createNavigationController } from "./navigation";
+import { createRelatedController } from "./related";
 import { createSearchController, type SearchController } from "./search";
 import { createSubscriptionsController } from "./subscriptions";
 
@@ -80,6 +81,17 @@ export function initializeSidebar(): void {
         setActiveView: navigationController.setActiveView
     });
 
+    const relatedController = createRelatedController({
+        updateActiveViewLoadingIndicators: navigationController.updateActiveViewLoadingIndicators,
+        playFeedItem: feedController.playFeedItem,
+        resolveFeedItemPresentation: feedController.resolveFeedItemPresentation,
+        buildFinalFilteredFeedItems: feedController.buildFinalFilteredFeedItems,
+        getValidTvAccessToken: authController.getValidTvAccessToken,
+        refreshTvAccessToken: authController.refreshTvAccessToken,
+        setActiveView: navigationController.setActiveView,
+        renderModeTabs: authController.renderModeTabs
+    });
+
     const eventsController = createEventsController({
         setActiveView: navigationController.setActiveView,
         performSearch: searchController.performSearch,
@@ -90,6 +102,7 @@ export function initializeSidebar(): void {
 
     const hookController = createHookController({
         iinaApi: state.iinaApi,
+        onPlaybackLifecycleEvent: relatedController.handlePlaybackLifecycleEvent,
         onSettingsSync: (payload) => {
             const flags = payload.featureFlags;
             const currentFlags = state.uiSettings.featureFlags;
@@ -128,6 +141,7 @@ export function initializeSidebar(): void {
     renderFavorites();
     feedController.renderFeed();
     subscriptionsController.renderSubscriptions();
+    relatedController.renderRelated();
     searchController.renderSearchResults();
     searchController.setSearchStatus(state.searchState.status);
 

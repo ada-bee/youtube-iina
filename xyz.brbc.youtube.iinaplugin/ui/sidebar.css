@@ -40,7 +40,7 @@ body {
 }
 
 .yt-header {
-    padding: 16px 16px 10px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--line);
     background: rgba(37, 37, 37, 0.92);
 }
@@ -324,12 +324,20 @@ body {
 }
 
 .yt-search-form {
-    margin: 8px 0 2px;
+    margin: 0 0 10px;
+}
+
+.yt-search-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .yt-search-shell {
     display: flex;
     align-items: center;
+    flex: 1;
+    min-width: 0;
     border: 1px solid var(--line);
     border-radius: 999px;
     background: rgba(33, 33, 33, 0.95);
@@ -424,7 +432,8 @@ body {
 }
 
 .yt-feed-home .yt-list,
-.yt-view[data-view="subscriptions"] .yt-list {
+.yt-view[data-view="subscriptions"] .yt-list,
+.yt-view[data-view="related"] .yt-list {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
     align-items: start;
@@ -592,6 +601,7 @@ body {
 
 .yt-feed-home .yt-item,
 .yt-view[data-view="subscriptions"] .yt-item,
+.yt-view[data-view="related"] .yt-item,
 .yt-item-feed-layout {
     flex-direction: row;
     align-items: flex-start;
@@ -605,6 +615,7 @@ body {
 
 .yt-feed-home .yt-item-playable:hover,
 .yt-view[data-view="subscriptions"] .yt-item-playable:hover,
+.yt-view[data-view="related"] .yt-item-playable:hover,
 .yt-item-feed-layout.yt-item-playable:hover {
     background: var(--panel);
 }
@@ -613,6 +624,8 @@ body {
 .yt-feed-home .yt-item-playable:focus-visible,
 .yt-view[data-view="subscriptions"] .yt-item-playable:focus,
 .yt-view[data-view="subscriptions"] .yt-item-playable:focus-visible,
+.yt-view[data-view="related"] .yt-item-playable:focus,
+.yt-view[data-view="related"] .yt-item-playable:focus-visible,
 .yt-item-feed-layout.yt-item-playable:focus,
 .yt-item-feed-layout.yt-item-playable:focus-visible {
     outline: none;
@@ -621,6 +634,7 @@ body {
 
 .yt-feed-home .yt-item-thumb-wrapper,
 .yt-view[data-view="subscriptions"] .yt-item-thumb-wrapper,
+.yt-view[data-view="related"] .yt-item-thumb-wrapper,
 .yt-item-feed-layout .yt-item-thumb-wrapper {
     width: 142px;
     height: 80px;
@@ -629,6 +643,7 @@ body {
 
 .yt-feed-home .yt-item-content,
 .yt-view[data-view="subscriptions"] .yt-item-content,
+.yt-view[data-view="related"] .yt-item-content,
 .yt-item-feed-layout .yt-item-content {
     width: auto;
     flex: 1;
@@ -640,6 +655,7 @@ body {
 
 .yt-feed-home .yt-item-title,
 .yt-view[data-view="subscriptions"] .yt-item-title,
+.yt-view[data-view="related"] .yt-item-title,
 .yt-item-feed-layout .yt-item-title {
     font-family: "Roboto", -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
     font-size: 0.9rem;
@@ -659,6 +675,8 @@ body {
 .yt-feed-home .yt-item-stats,
 .yt-view[data-view="subscriptions"] .yt-item-channel,
 .yt-view[data-view="subscriptions"] .yt-item-stats,
+.yt-view[data-view="related"] .yt-item-channel,
+.yt-view[data-view="related"] .yt-item-stats,
 .yt-item-feed-layout .yt-item-channel,
 .yt-item-feed-layout .yt-item-stats {
     font-family: "Roboto", -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
@@ -672,12 +690,14 @@ body {
 
 .yt-feed-home .yt-item-channel,
 .yt-view[data-view="subscriptions"] .yt-item-channel,
+.yt-view[data-view="related"] .yt-item-channel,
 .yt-item-feed-layout .yt-item-channel {
     margin-top: 2px;
 }
 
 .yt-feed-home .yt-item-stats,
 .yt-view[data-view="subscriptions"] .yt-item-stats,
+.yt-view[data-view="related"] .yt-item-stats,
 .yt-item-feed-layout .yt-item-stats {
     margin-top: 0;
     min-height: 1.25em;

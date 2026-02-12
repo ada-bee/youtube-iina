@@ -5,12 +5,14 @@ export interface LoadingIndicatorState {
     activeView: ViewName;
     isFeedLoading: boolean;
     isSubscriptionsLoading: boolean;
+    isRelatedLoading: boolean;
     isSearchLoading: boolean;
 }
 
 export interface LoadingIndicatorElements {
     feedLoadingIndicator: HTMLElement | null;
     subscriptionsLoadingIndicator: HTMLElement | null;
+    relatedLoadingIndicator: HTMLElement | null;
     searchLoadingIndicator: HTMLElement | null;
 }
 
@@ -86,6 +88,7 @@ export function updateActiveViewLoadingIndicators(
         elements.subscriptionsLoadingIndicator,
         state.activeView === "subscriptions" && state.isSubscriptionsLoading
     );
+    setElementVisibility(elements.relatedLoadingIndicator, state.activeView === "related" && state.isRelatedLoading);
     setElementVisibility(elements.searchLoadingIndicator, state.activeView === "search" && state.isSearchLoading);
 }
 

@@ -6,6 +6,7 @@ import {
     authToggleButton,
     favoritesTab,
     feedTab,
+    relatedTab,
     subscriptionsTab
 } from "../dom";
 import { state } from "../state";
@@ -92,10 +93,12 @@ export function createAuthController(dependencies: AuthControllerDependencies): 
     const renderModeTabs = (): void => {
         renderModeTabsView({
             appMode: state.appMode,
+            currentPlaybackVideoId: state.currentPlaybackVideoId,
             elements: {
                 feedTab,
                 subscriptionsTab,
-                favoritesTab
+                favoritesTab,
+                relatedTab
             },
             getActiveView: dependencies.getActiveView,
             setActiveView: dependencies.setActiveView

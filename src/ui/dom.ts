@@ -19,6 +19,12 @@ export const subscriptionsEmptyState = document.querySelector<HTMLElement>("[dat
 export const subscriptionsStatus = document.querySelector<HTMLElement>("[data-subscriptions-status]")!;
 export const subscriptionsLoadingIndicator = document.querySelector<HTMLElement>("[data-subscriptions-loading]")!;
 
+export const relatedTab = document.querySelector<HTMLButtonElement>('.yt-tab[data-view="related"]')!;
+export const relatedList = document.querySelector<HTMLUListElement>("[data-related-list]")!;
+export const relatedEmptyState = document.querySelector<HTMLElement>("[data-related-empty]")!;
+export const relatedStatus = document.querySelector<HTMLElement>("[data-related-status]")!;
+export const relatedLoadingIndicator = document.querySelector<HTMLElement>("[data-related-loading]")!;
+
 export const searchForm = document.querySelector<HTMLFormElement>("[data-search-form]")!;
 export const searchInput = document.querySelector<HTMLInputElement>("[data-search-input]")!;
 export const searchStatus = document.querySelector<HTMLElement>("[data-search-status]")!;

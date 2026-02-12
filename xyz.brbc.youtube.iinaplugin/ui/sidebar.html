@@ -8,47 +8,50 @@
     </head>
     <body>
         <header class="yt-header">
+            <form class="yt-search-form" data-search-form>
+                <div class="yt-search-row">
+                    <div class="yt-search-shell">
+                        <input
+                            class="yt-search-input"
+                            type="search"
+                            placeholder="Search"
+                            autocomplete="off"
+                            data-search-input
+                        >
+                        <button class="yt-search-submit" type="submit" aria-label="Search" title="Search">
+                            <svg class="yt-search-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                                <path d="M11.6 10.2l3 3-1.4 1.4-3-3A5.5 5.5 0 1 1 11.6 10.2zM6.5 10.5A4 4 0 1 0 6.5 2.5a4 4 0 0 0 0 8z" fill="currentColor"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="yt-header-actions">
+                        <button class="yt-icon-button yt-home-button" type="button" aria-label="Home" title="Home" data-home-refresh>
+                            <svg class="yt-home-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                                <path d="M8 2.2L2 7.2v6.6h4.2V9.4h3.6v4.4H14V7.2L8 2.2z" fill="currentColor"></path>
+                            </svg>
+                        </button>
+                        <button
+                            class="yt-icon-button yt-auth-button"
+                            type="button"
+                            aria-label="Login"
+                            title="Login"
+                            data-auth-toggle
+                        >
+                            <svg class="yt-auth-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                                <path d="M6 2v2H3v8h3v2H1V2h5zm4 3l4 3-4 3V9H5V7h5V5z" fill="currentColor"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </form>
             <div class="yt-header-controls">
                 <nav class="yt-tabs">
                     <button class="yt-tab is-active" type="button" data-view="feed">Feed</button>
                     <button class="yt-tab" type="button" data-view="subscriptions" hidden>Subscriptions</button>
                     <button class="yt-tab" type="button" data-view="favorites">Channels</button>
+                    <button class="yt-tab" type="button" data-view="related" hidden>Related</button>
                 </nav>
-                <div class="yt-header-actions">
-                    <button class="yt-icon-button yt-home-button" type="button" aria-label="Home" title="Home" data-home-refresh>
-                        <svg class="yt-home-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                            <path d="M8 2.2L2 7.2v6.6h4.2V9.4h3.6v4.4H14V7.2L8 2.2z" fill="currentColor"></path>
-                        </svg>
-                    </button>
-                    <button
-                        class="yt-icon-button yt-auth-button"
-                        type="button"
-                        aria-label="Login"
-                        title="Login"
-                        data-auth-toggle
-                    >
-                        <svg class="yt-auth-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                            <path d="M6 2v2H3v8h3v2H1V2h5zm4 3l4 3-4 3V9H5V7h5V5z" fill="currentColor"></path>
-                        </svg>
-                    </button>
-                </div>
             </div>
-            <form class="yt-search-form" data-search-form>
-                <div class="yt-search-shell">
-                    <input
-                        class="yt-search-input"
-                        type="search"
-                        placeholder="Search"
-                        autocomplete="off"
-                        data-search-input
-                    >
-                    <button class="yt-search-submit" type="submit" aria-label="Search" title="Search">
-                        <svg class="yt-search-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                            <path d="M11.6 10.2l3 3-1.4 1.4-3-3A5.5 5.5 0 1 1 11.6 10.2zM6.5 10.5A4 4 0 1 0 6.5 2.5a4 4 0 0 0 0 8z" fill="currentColor"></path>
-                        </svg>
-                    </button>
-                </div>
-            </form>
             <p class="yt-auth-status" data-auth-status>Anonymous mode</p>
             <div class="yt-auth-panel" data-auth-panel hidden>
                 <p class="yt-auth-panel-title">Copy this code and follow the intructions in your browser to sign-in.</p>
@@ -101,6 +104,14 @@
             <section class="yt-view" data-view="favorites">
                 <p class="yt-empty" data-favorites-empty>No channels yet. Add channels from search results.</p>
                 <ul class="yt-list" data-favorites-list></ul>
+            </section>
+            <section class="yt-view" data-view="related">
+                <p class="yt-empty" data-related-empty>Start playing a video to see related videos.</p>
+                <p class="yt-empty" data-related-status hidden></p>
+                <div class="yt-loading" data-related-loading hidden role="status" aria-label="Loading">
+                    <span class="yt-spinner" aria-hidden="true"></span>
+                </div>
+                <ul class="yt-list" data-related-list></ul>
             </section>
         </main>
 
