@@ -23,6 +23,7 @@ export interface SearchRenderElements {
 
 export interface SearchRenderDependencies {
     searchState: SearchState;
+    isLoggedIn: boolean;
     elements: SearchRenderElements;
     onUpdateLoadingIndicators: () => void;
     onOpenChannel: (channel: SearchChannelResult) => void;
@@ -36,6 +37,7 @@ export interface SearchRenderDependencies {
 export function renderSearchResults(dependencies: SearchRenderDependencies): void {
     const {
         searchState,
+        isLoggedIn,
         elements,
         onUpdateLoadingIndicators,
         onOpenChannel,
@@ -94,7 +96,9 @@ export function renderSearchResults(dependencies: SearchRenderDependencies): voi
                 isFavorite: alreadyFavorite,
                 onToggle: () => {
                     onToggleFavorite(channel);
-                }
+                },
+                inactiveLabel: isLoggedIn ? "Subscribe" : "Favourite",
+                activeLabel: isLoggedIn ? "Subscribed" : "Favourited"
             });
 
             actions.append(favoriteButton);

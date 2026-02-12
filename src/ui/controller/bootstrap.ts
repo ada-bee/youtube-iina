@@ -65,6 +65,18 @@ export function initializeSidebar(): void {
         updateActiveViewLoadingIndicators: navigationController.updateActiveViewLoadingIndicators,
         refreshFeed: feedController.refreshFeed,
         refreshSubscriptions: subscriptionsController.refreshSubscriptions,
+        getValidTvAccessToken: () => {
+            if (!authController) {
+                return Promise.reject(new Error("Auth controller unavailable."));
+            }
+            return authController.getValidTvAccessToken();
+        },
+        refreshTvAccessToken: () => {
+            if (!authController) {
+                return Promise.reject(new Error("Auth controller unavailable."));
+            }
+            return authController.refreshTvAccessToken();
+        },
         renderFavorites,
         setActiveView: navigationController.setActiveView,
         buildFinalFilteredFeedItems: feedController.buildFinalFilteredFeedItems,

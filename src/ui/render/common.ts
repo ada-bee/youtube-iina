@@ -60,16 +60,23 @@ export function createChannelMetaLine(dependencies: ChannelMetaLineDependencies)
 export interface FavoriteToggleButtonDependencies {
     isFavorite: boolean;
     onToggle: () => void;
+    inactiveLabel?: string;
+    activeLabel?: string;
 }
 
 export function createFavoriteToggleButton(dependencies: FavoriteToggleButtonDependencies): HTMLButtonElement {
-    const { isFavorite, onToggle } = dependencies;
+    const {
+        isFavorite,
+        onToggle,
+        inactiveLabel = "Favourite",
+        activeLabel = "Favourited"
+    } = dependencies;
 
     const button = document.createElement("button");
     button.type = "button";
     button.className = "yt-favorite-toggle";
     button.classList.toggle("is-favorited", isFavorite);
-    button.textContent = isFavorite ? "Favourited" : "Favourite";
+    button.textContent = isFavorite ? activeLabel : inactiveLabel;
     button.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();

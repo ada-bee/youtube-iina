@@ -26,6 +26,14 @@ export interface SearchChannelResult {
     title: string;
     thumbnailUrl: string;
     channelHandle: string;
+    isSubscribed?: boolean;
+    subscribeCommand?: InnertubeCommand;
+    unsubscribeCommand?: InnertubeCommand;
+}
+
+export interface InnertubeCommand {
+    apiPath: string;
+    payload: Record<string, unknown>;
 }
 
 export interface SearchVideoResult {

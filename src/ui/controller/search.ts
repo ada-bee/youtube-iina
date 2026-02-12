@@ -19,6 +19,10 @@ import {
     buildWebClientContext,
     buildWebInnertubeHeaders
 } from "../innertube/request";
+import {
+    executeChannelSubscriptionCommand,
+    fetchChannelSubscriptionState
+} from "../innertube/subscription";
 import { parseSearchResponse as parseSearchResponseFromParser } from "../parsers/search";
 import { mapFeedItemsToSearchVideos, mapSearchVideosToFeedItems } from "./videoAdapters";
 import {
@@ -30,6 +34,7 @@ import { persistFavoritesToStorage as persistFavoritesListToStorage } from "../s
 import type {
     FavoriteChannel,
     FeedVideoItem,
+    InnertubeCommand,
     SearchChannelResult,
     SearchVideoResult,
     VideoMetadata,
@@ -37,11 +42,14 @@ import type {
 } from "../types";
 import { normalizeChannelHandle } from "../utils/text";
 import { sendHttpRequest } from "../bridge/httpBridge";
+import { mapWithConcurrency } from "../utils/async";
 
 interface SearchControllerDependencies {
     updateActiveViewLoadingIndicators: () => void;
     refreshFeed: () => Promise<void>;
     refreshSubscriptions: () => Promise<void>;
+    getValidTvAccessToken: () => Promise<string>;
+    refreshTvAccessToken: () => Promise<string>;
     renderFavorites: () => void;
     setActiveView: (view: ViewName) => void;
     buildFinalFilteredFeedItems: (items: FeedVideoItem[], limit: number) => Promise<FeedVideoItem[]>;
@@ -73,7 +81,136 @@ export function createSearchController(dependencies: SearchControllerDependencie
     };
 
     const isFavoriteChannel = (channelId: string): boolean => {
+        if (state.appMode === "logged_in") {
+            return state.searchState.channels.some((channel) => channel.channelId === channelId && channel.isSubscribed === true);
+        }
+
         return state.favorites.some((favorite) => favorite.channelId === channelId);
+    };
+
+    const subscriptionFallbackCommand = (channelId: string, subscribe: boolean): InnertubeCommand => {
+        return {
+            apiPath: subscribe ? "subscription/subscribe" : "subscription/unsubscribe",
+            payload: {
+                channelIds: [channelId]
+            }
+        };
+    };
+
+    const updateSearchChannelById = (
+        channelId: string,
+        updater: (channel: SearchChannelResult) => SearchChannelResult
+    ): SearchChannelResult | null => {
+        let updatedChannel: SearchChannelResult | null = null;
+        state.searchState.channels = state.searchState.channels.map((channel) => {
+            if (channel.channelId !== channelId) {
+                return channel;
+            }
+
+            updatedChannel = updater(channel);
+            return updatedChannel;
+        });
+        return updatedChannel;
+    };
+
+    const fetchSearchChannelSubscriptionState = async (channel: SearchChannelResult): Promise<SearchChannelResult> => {
+        const normalizedChannelId = channel.channelId.trim();
+        if (!normalizedChannelId || state.appMode !== "logged_in") {
+            return channel;
+        }
+
+        try {
+            const subscriptionState = await fetchChannelSubscriptionState(
+                normalizedChannelId,
+                {
+                    isTvAuthAvailable: () => Boolean(state.tvAuthCache),
+                    getValidTvAccessToken: dependencies.getValidTvAccessToken,
+                    refreshTvAccessToken: dependencies.refreshTvAccessToken
+                }
+            );
+
+            return {
+                ...channel,
+                isSubscribed: subscriptionState.isSubscribed === true,
+                subscribeCommand: subscriptionState.subscribeCommand,
+                unsubscribeCommand: subscriptionState.unsubscribeCommand
+            };
+        } catch {
+            return {
+                ...channel,
+                isSubscribed: false,
+                subscribeCommand: channel.subscribeCommand,
+                unsubscribeCommand: channel.unsubscribeCommand
+            };
+        }
+    };
+
+    const resolveSearchChannelsSubscriptionState = async (
+        channels: SearchChannelResult[]
+    ): Promise<SearchChannelResult[]> => {
+        if (state.appMode !== "logged_in" || channels.length === 0) {
+            return channels;
+        }
+
+        return mapWithConcurrency(channels, 3, fetchSearchChannelSubscriptionState);
+    };
+
+    const resolveSubscriptionCommand = async (
+        channel: SearchChannelResult,
+        subscribe: boolean
+    ): Promise<{ channel: SearchChannelResult; command: InnertubeCommand }> => {
+        if (state.appMode !== "logged_in") {
+            throw new Error("Sign in to manage subscriptions.");
+        }
+
+        const existingCommand = subscribe ? channel.subscribeCommand : channel.unsubscribeCommand;
+        if (existingCommand) {
+            return { channel, command: existingCommand };
+        }
+
+        const hydrated = await fetchSearchChannelSubscriptionState(channel);
+        updateSearchChannelById(channel.channelId, () => hydrated);
+
+        const hydratedCommand = subscribe ? hydrated.subscribeCommand : hydrated.unsubscribeCommand;
+        if (hydratedCommand) {
+            return { channel: hydrated, command: hydratedCommand };
+        }
+
+        return {
+            channel: hydrated,
+            command: subscriptionFallbackCommand(channel.channelId, subscribe)
+        };
+    };
+
+    const toggleSubscription = async (channel: SearchChannelResult): Promise<void> => {
+        const currentChannel = state.searchState.channels.find((entry) => entry.channelId === channel.channelId) || channel;
+        const currentlySubscribed = currentChannel.isSubscribed === true;
+        const shouldSubscribe = !currentlySubscribed;
+
+        const { channel: channelForAction, command } = await resolveSubscriptionCommand(currentChannel, shouldSubscribe);
+
+        const actionResult = await executeChannelSubscriptionCommand(
+            command,
+            {
+                isTvAuthAvailable: () => Boolean(state.tvAuthCache),
+                getValidTvAccessToken: dependencies.getValidTvAccessToken,
+                refreshTvAccessToken: dependencies.refreshTvAccessToken
+            }
+        );
+
+        const nextSubscribed = actionResult.isSubscribed === null
+            ? shouldSubscribe
+            : actionResult.isSubscribed;
+
+        updateSearchChannelById(channelForAction.channelId, (entry) => ({
+            ...entry,
+            isSubscribed: nextSubscribed,
+            subscribeCommand: actionResult.subscribeCommand || entry.subscribeCommand,
+            unsubscribeCommand: actionResult.unsubscribeCommand || entry.unsubscribeCommand
+        }));
+
+        renderSearchResults();
+        await Promise.all([dependencies.refreshFeed(), dependencies.refreshSubscriptions()]);
     };
 
     const persistFavoritesToStorage = (): void => {
@@ -140,6 +277,14 @@ export function createSearchController(dependencies: SearchControllerDependencie
     };
 
     const toggleFavorite = (channel: SearchChannelResult): void => {
+        if (state.appMode === "logged_in") {
+            void toggleSubscription(channel).catch((error) => {
+                const message = error instanceof Error ? error.message : String(error);
+                setSearchStatus(`Could not update subscription: ${message}`);
+            });
+            return;
+        }
+
         if (isFavoriteChannel(channel.channelId)) {
             removeFavorite(channel.channelId);
             return;
@@ -172,6 +317,7 @@ export function createSearchController(dependencies: SearchControllerDependencie
     const renderSearchResults = (): void => {
         renderSearchResultsView({
             searchState: state.searchState,
+            isLoggedIn: state.appMode === "logged_in",
             elements: {
                 channelsList,
                 videosList,
@@ -238,6 +384,7 @@ export function createSearchController(dependencies: SearchControllerDependencie
             const responseJson: unknown = JSON.parse(response.text);
             const parsed = parseSearchResponseFromParser(responseJson);
             const limitedChannels = parsed.channels.slice(0, SEARCH_CHANNELS_LIMIT);
+            const channelsWithSubscriptionState = await resolveSearchChannelsSubscriptionState(limitedChannels);
             const limitedVideos = parsed.videos.slice(0, SEARCH_VIDEOS_LIMIT);
             const finalizedVideos = await buildFinalSearchVideos(limitedVideos);
 
@@ -245,7 +392,7 @@ export function createSearchController(dependencies: SearchControllerDependencie
                 return;
             }
 
-            state.searchState.channels = limitedChannels;
+            state.searchState.channels = channelsWithSubscriptionState;
             state.searchState.videos = finalizedVideos;
             setSearchStatus("");
         } catch (error) {
