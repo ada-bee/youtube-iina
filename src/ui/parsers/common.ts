@@ -6,7 +6,12 @@ import {
     SHORTS_ENDPOINT_PATH_MARKER_PATTERN,
     SHORTS_ENDPOINT_SERIALIZED_MARKER_PATTERN
 } from "../constants";
-import type { FeedVideoItem, JsonObject } from "../types";
+import type {
+    FeedParseDiagnostics,
+    FeedParseRejectReason,
+    FeedVideoItem,
+    JsonObject
+} from "../types";
 import { asArray, asObject, asString } from "../utils/json";
 import { extractText, normalizeChannelHandle } from "../utils/text";
 
@@ -215,4 +220,36 @@ export function dedupeFeedItems(items: FeedVideoItem[]): FeedVideoItem[] {
 
 export function buildFallbackThumbnailUrl(videoId: string): string {
     return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+}
+
+export function createEmptyFeedParseDiagnostics(): FeedParseDiagnostics {
+    return {
+        totalVisitedNodes: 0,
+        acceptedItems: 0,
+        rejectedByReason: {}
+    };
+}
+
+export function incrementFeedRejectReason(
+    diagnostics: FeedParseDiagnostics,
+    reason: FeedParseRejectReason
+): void {
+    const current = diagnostics.rejectedByReason[reason] || 0;
+    diagnostics.rejectedByReason[reason] = current + 1;
+}
+
+export function mergeFeedParseDiagnostics(
+    target: FeedParseDiagnostics,
+    source: FeedParseDiagnostics
+): void {
+    target.totalVisitedNodes += source.totalVisitedNodes;
+    target.acceptedItems += source.acceptedItems;
+
+    Object.entries(source.rejectedByReason).forEach(([reason, count]) => {
+        if (!count) {
+            return;
+        }
+        const typedReason = reason as FeedParseRejectReason;
+        target.rejectedByReason[typedReason] = (target.rejectedByReason[typedReason] || 0) + count;
+    });
 }

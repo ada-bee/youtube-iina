@@ -77,6 +77,15 @@ export function getPublishedTimestamp(published: string): number {
 }
 
 function formatPublishedText(published: string): string {
+    const trimmed = published.trim();
+    if (!trimmed) {
+        return "";
+    }
+
+    if (/views?/i.test(trimmed) && !/ago|today|yesterday|streamed|premiered/i.test(trimmed)) {
+        return "";
+    }
+
     const timestamp = getPublishedTimestamp(published);
     if (timestamp === 0) {
         return "";
@@ -85,6 +94,15 @@ function formatPublishedText(published: string): string {
 }
 
 function formatRelativeAge(published: string): string {
+    const trimmed = published.trim();
+    if (!trimmed) {
+        return "";
+    }
+
+    if (/views?/i.test(trimmed) && !/ago|today|yesterday|streamed|premiered/i.test(trimmed)) {
+        return "";
+    }
+
     const timestamp = getPublishedTimestamp(published);
     if (!timestamp) {
         return "";

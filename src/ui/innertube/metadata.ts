@@ -161,7 +161,7 @@ export async function buildFinalFilteredFeedItems(
                 didUpdateCache = true;
             }
 
-            if (!metadata.metadata || metadata.metadata.isShortForm) {
+            if (metadata.metadata?.isShortForm) {
                 continue;
             }
 

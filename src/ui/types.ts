@@ -94,6 +94,7 @@ export interface FeedVideoItem {
     channelTitle: string;
     thumbnailUrl: string;
     viewCountText?: string;
+    parseConfidenceLevel?: "high" | "medium" | "low";
 }
 
 export interface VideoMetadata {
@@ -117,10 +118,44 @@ export interface FeedState {
     warning: string;
 }
 
+export type FeedParseRejectReason =
+    | "missing_video_id"
+    | "invalid_video_id"
+    | "missing_title"
+    | "content_type_filtered"
+    | "ad_marker"
+    | "short_or_live_marker"
+    | "watch_video_id_invalid"
+    | "watch_video_id_mismatch"
+    | "thumbnail_untrusted";
+
+export interface FeedParseDiagnostics {
+    totalVisitedNodes: number;
+    acceptedItems: number;
+    rejectedByReason: Partial<Record<FeedParseRejectReason, number>>;
+}
+
+export interface FeedParseResult {
+    items: FeedVideoItem[];
+    diagnostics: FeedParseDiagnostics;
+}
+
+export type FeedFetchFailureReason = "http_error" | "json_parse_error" | "parse_empty" | "auth_required" | "unknown_error";
+
+export interface FeedFetchResult {
+    items: FeedVideoItem[];
+    diagnostics: FeedParseDiagnostics;
+    failureReason?: FeedFetchFailureReason;
+    statusCode?: number;
+}
+
 export interface ChannelFeedResult {
     channelId: string;
     items: FeedVideoItem[];
     hadError: boolean;
+    failureReason?: FeedFetchFailureReason;
+    statusCode?: number;
+    diagnostics: FeedParseDiagnostics;
 }
 
 export type JsonObject = Record<string, unknown>;

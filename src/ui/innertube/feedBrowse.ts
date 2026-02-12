@@ -21,10 +21,16 @@ import {
     buildWebClientContext,
     buildWebInnertubeHeaders
 } from "./request";
-import { dedupeFeedItems } from "../parsers/common";
+import {
+    createEmptyFeedParseDiagnostics,
+    dedupeFeedItems,
+    mergeFeedParseDiagnostics
+} from "../parsers/common";
 import { parseFeedItemsFromBrowseResponse } from "../parsers/feed";
 import type {
-    FeedVideoItem,
+    FeedFetchFailureReason,
+    FeedFetchResult,
+    FeedParseDiagnostics,
     JsonObject,
     TvInnertubeConfig
 } from "../types";
@@ -34,6 +40,12 @@ interface FetchLoggedInBrowseFeedDependencies {
     isTvAuthAvailable: () => boolean;
     getValidTvAccessToken: () => Promise<string>;
     refreshTvAccessToken: () => Promise<string>;
+}
+
+interface PageFetchResult {
+    payload?: unknown;
+    failureReason?: FeedFetchFailureReason;
+    statusCode?: number;
 }
 
 function buildTvInnertubeHeaders(config: TvInnertubeConfig, accessToken: string): Record<string, string> {
@@ -101,22 +113,48 @@ function extractFirstContinuationToken(payload: unknown): string {
     return "";
 }
 
+function hasAnyRejectedItems(diagnostics: FeedParseDiagnostics): boolean {
+    return Object.values(diagnostics.rejectedByReason).some((count) => (count || 0) > 0);
+}
+
+function finalizeFeedFetchResult(
+    items: ReturnType<typeof dedupeFeedItems>,
+    diagnostics: FeedParseDiagnostics,
+    failureReason?: FeedFetchFailureReason,
+    statusCode?: number
+): FeedFetchResult {
+    const deduped = dedupeFeedItems(items);
+    const parseEmpty = deduped.length === 0 && hasAnyRejectedItems(diagnostics);
+    return {
+        items: deduped,
+        diagnostics,
+        failureReason: failureReason || (parseEmpty ? "parse_empty" : undefined),
+        statusCode
+    };
+}
+
 async function collectFeedItemsFromBrowsePages(
-    fetchPage: (continuation?: string) => Promise<unknown>,
+    fetchPage: (continuation?: string) => Promise<PageFetchResult>,
     prefetchTarget: number,
     maxPages: number
-): Promise<FeedVideoItem[]> {
+): Promise<FeedFetchResult> {
     const target = Math.max(1, prefetchTarget);
     const pageBudget = Math.max(1, maxPages);
-    const collected: FeedVideoItem[] = [];
+    const collected = [] as ReturnType<typeof dedupeFeedItems>;
+    const diagnostics = createEmptyFeedParseDiagnostics();
     const seenContinuationTokens = new Set<string>();
     let continuation = "";
 
     for (let pageIndex = 0; pageIndex < pageBudget; pageIndex += 1) {
-        const payload = await fetchPage(continuation || undefined);
-        const pageItems = parseFeedItemsFromBrowseResponse(payload);
-        if (pageItems.length > 0) {
-            collected.push(...pageItems);
+        const pageResult = await fetchPage(continuation || undefined);
+        if (!pageResult.payload) {
+            return finalizeFeedFetchResult(collected, diagnostics, pageResult.failureReason || "unknown_error", pageResult.statusCode);
+        }
+
+        const pageParseResult = parseFeedItemsFromBrowseResponse(pageResult.payload);
+        mergeFeedParseDiagnostics(diagnostics, pageParseResult.diagnostics);
+        if (pageParseResult.items.length > 0) {
+            collected.push(...pageParseResult.items);
         }
 
         const deduped = dedupeFeedItems(collected);
@@ -126,7 +164,7 @@ async function collectFeedItemsFromBrowsePages(
             break;
         }
 
-        const nextContinuation = extractFirstContinuationToken(payload);
+        const nextContinuation = extractFirstContinuationToken(pageResult.payload);
         if (!nextContinuation || seenContinuationTokens.has(nextContinuation)) {
             break;
         }
@@ -134,7 +172,7 @@ async function collectFeedItemsFromBrowsePages(
         continuation = nextContinuation;
     }
 
-    return dedupeFeedItems(collected);
+    return finalizeFeedFetchResult(collected, diagnostics);
 }
 
 async function sendTvInnertubeRequest(
@@ -142,12 +180,21 @@ async function sendTvInnertubeRequest(
     body: JsonObject,
     timeoutMs: number,
     dependencies: FetchLoggedInBrowseFeedDependencies
-): Promise<unknown> {
+): Promise<PageFetchResult> {
     if (!dependencies.isTvAuthAvailable()) {
-        throw new Error("Not logged in.");
+        return {
+            failureReason: "auth_required"
+        };
     }
 
-    const config = await getTvInnertubeConfig();
+    let config: TvInnertubeConfig;
+    try {
+        config = await getTvInnertubeConfig();
+    } catch {
+        return {
+            failureReason: "unknown_error"
+        };
+    }
 
     const executeRequest = async (accessToken: string) => {
         return sendHttpRequest(
@@ -166,20 +213,70 @@ async function sendTvInnertubeRequest(
         );
     };
 
-    let response = await executeRequest(await dependencies.getValidTvAccessToken());
+    let response: Awaited<ReturnType<typeof sendHttpRequest>>;
+    try {
+        response = await executeRequest(await dependencies.getValidTvAccessToken());
+    } catch {
+        return {
+            failureReason: "unknown_error"
+        };
+    }
+
     if ((response.statusCode === 401 || response.statusCode === 403) && dependencies.isTvAuthAvailable()) {
-        response = await executeRequest(await dependencies.refreshTvAccessToken());
+        try {
+            response = await executeRequest(await dependencies.refreshTvAccessToken());
+        } catch {
+            return {
+                failureReason: "auth_required",
+                statusCode: response.statusCode
+            };
+        }
     }
 
     if (!response.ok || !response.text) {
-        throw new Error(`Request to /${endpoint} failed with status ${response.statusCode}`);
+        return {
+            failureReason: response.statusCode === 401 || response.statusCode === 403 ? "auth_required" : "http_error",
+            statusCode: response.statusCode
+        };
     }
 
-    return JSON.parse(response.text);
+    try {
+        return {
+            payload: JSON.parse(response.text)
+        };
+    } catch {
+        return {
+            failureReason: "json_parse_error",
+            statusCode: response.statusCode
+        };
+    }
 }
 
-export async function fetchLoggedInHomeFeed(dependencies: FetchLoggedInBrowseFeedDependencies): Promise<FeedVideoItem[]> {
-    const items = await collectFeedItemsFromBrowsePages(
+function mapFeedFailureToMessage(reason: FeedFetchFailureReason | undefined, fallback: string): string {
+    if (!reason) {
+        return "";
+    }
+
+    switch (reason) {
+        case "auth_required":
+            return "Sign in again to refresh this view.";
+        case "json_parse_error":
+            return "Could not parse YouTube response.";
+        case "parse_empty":
+            return "Could not find playable videos in YouTube response.";
+        case "http_error":
+            return fallback;
+        default:
+            return fallback;
+    }
+}
+
+export function describeFeedFetchFailure(reason: FeedFetchFailureReason | undefined, fallback: string): string {
+    return mapFeedFailureToMessage(reason, fallback);
+}
+
+export async function fetchLoggedInHomeFeed(dependencies: FetchLoggedInBrowseFeedDependencies): Promise<FeedFetchResult> {
+    const result = await collectFeedItemsFromBrowsePages(
         (continuation?: string) => sendTvInnertubeRequest(
             "browse",
             continuation ? { continuation } : { browseId: "FEwhat_to_watch" },
@@ -189,11 +286,14 @@ export async function fetchLoggedInHomeFeed(dependencies: FetchLoggedInBrowseFee
         Math.max(HOME_PREFETCH_TARGET, HOME_ITEMS_LIMIT),
         LOGGED_IN_BROWSE_MAX_PAGES
     );
-    return items.slice(0, HOME_ITEMS_LIMIT);
+    return {
+        ...result,
+        items: result.items.slice(0, HOME_ITEMS_LIMIT)
+    };
 }
 
-export async function fetchLoggedInSubscriptionsFeed(dependencies: FetchLoggedInBrowseFeedDependencies): Promise<FeedVideoItem[]> {
-    const items = await collectFeedItemsFromBrowsePages(
+export async function fetchLoggedInSubscriptionsFeed(dependencies: FetchLoggedInBrowseFeedDependencies): Promise<FeedFetchResult> {
+    const result = await collectFeedItemsFromBrowsePages(
         (continuation?: string) => sendTvInnertubeRequest(
             "browse",
             continuation ? { continuation } : { browseId: "FEsubscriptions" },
@@ -203,51 +303,92 @@ export async function fetchLoggedInSubscriptionsFeed(dependencies: FetchLoggedIn
         Math.max(SUBSCRIPTIONS_PREFETCH_TARGET, SUBSCRIPTIONS_ITEMS_LIMIT),
         LOGGED_IN_BROWSE_MAX_PAGES
     );
-    return items.slice(0, SUBSCRIPTIONS_ITEMS_LIMIT);
+    return {
+        ...result,
+        items: result.items.slice(0, SUBSCRIPTIONS_ITEMS_LIMIT)
+    };
 }
 
-export async function fetchChannelFeedFromInnertube(channelId: string): Promise<FeedVideoItem[]> {
-    const config = await getInnertubeConfig();
+export async function fetchChannelFeedFromInnertube(channelId: string): Promise<FeedFetchResult> {
+    let config: Awaited<ReturnType<typeof getInnertubeConfig>>;
+    try {
+        config = await getInnertubeConfig();
+    } catch {
+        return {
+            items: [],
+            diagnostics: createEmptyFeedParseDiagnostics(),
+            failureReason: "unknown_error"
+        };
+    }
+
     const headers = buildWebInnertubeHeaders(config);
+    let bestResult: FeedFetchResult = {
+        items: [],
+        diagnostics: createEmptyFeedParseDiagnostics(),
+    };
 
     for (const params of CHANNEL_VIDEOS_TAB_PARAMS_CANDIDATES) {
         const parsed = await collectFeedItemsFromBrowsePages(
-            async (continuation?: string) => {
-                const response = await sendHttpRequest(
-                    {
-                        method: "POST",
-                        url: buildInnertubeUrl("browse", config.apiKey),
-                        headers,
-                        body: {
-                            context: {
-                                client: buildWebClientContext(config)
-                            },
-                            ...(continuation
-                                ? { continuation }
-                                : {
-                                    browseId: channelId,
-                                    params
-                                })
-                        }
-                    },
-                    FEED_TIMEOUT_MS
-                );
-
-                if (!response.ok || !response.text) {
-                    throw new Error(`Channel feed request failed (${response.statusCode})`);
+            async (continuation?: string): Promise<PageFetchResult> => {
+                let response: Awaited<ReturnType<typeof sendHttpRequest>>;
+                try {
+                    response = await sendHttpRequest(
+                        {
+                            method: "POST",
+                            url: buildInnertubeUrl("browse", config.apiKey),
+                            headers,
+                            body: {
+                                context: {
+                                    client: buildWebClientContext(config)
+                                },
+                                ...(continuation
+                                    ? { continuation }
+                                    : {
+                                        browseId: channelId,
+                                        params
+                                    })
+                            }
+                        },
+                        FEED_TIMEOUT_MS
+                    );
+                } catch {
+                    return {
+                        failureReason: "unknown_error"
+                    };
                 }
 
-                return JSON.parse(response.text);
+                if (!response.ok || !response.text) {
+                    return {
+                        failureReason: "http_error",
+                        statusCode: response.statusCode
+                    };
+                }
+
+                try {
+                    return {
+                        payload: JSON.parse(response.text)
+                    };
+                } catch {
+                    return {
+                        failureReason: "json_parse_error",
+                        statusCode: response.statusCode
+                    };
+                }
             },
             CHANNEL_PREFETCH_TARGET,
             CHANNEL_BROWSE_MAX_PAGES
         );
 
-        const sliced = parsed.slice(0, FEED_ITEMS_PER_CHANNEL);
-        if (sliced.length > 0) {
-            return sliced;
+        const slicedItems = parsed.items.slice(0, FEED_ITEMS_PER_CHANNEL);
+        if (slicedItems.length > 0) {
+            return {
+                ...parsed,
+                items: slicedItems
+            };
         }
+
+        bestResult = parsed;
     }
 
-    return [];
+    return bestResult;
 }

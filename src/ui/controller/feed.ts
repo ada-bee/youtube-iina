@@ -1,6 +1,5 @@
 import { MESSAGE_NAMES } from "../../shared/messages";
 import {
-    CHANNEL_BROWSE_MAX_PAGES,
     FEED_EMPTY_NO_FAVORITES_TEXT,
     FEED_FETCH_CONCURRENCY,
     FEED_ITEMS_LIMIT,
@@ -9,6 +8,7 @@ import {
 } from "../constants";
 import { feedEmptyState, feedFavoritesList, feedStatus } from "../dom";
 import {
+    describeFeedFetchFailure,
     fetchChannelFeedFromInnertube,
     fetchLoggedInHomeFeed,
     fetchLoggedInSubscriptionsFeed as fetchLoggedInSubscriptionsFeedFromInnertube
@@ -22,6 +22,7 @@ import { state } from "../state";
 import { persistVideoMetadataCacheToStorage as persistVideoMetadataMapToStorage } from "../storage/videoMetaCache";
 import type {
     ChannelFeedResult,
+    FeedFetchResult,
     FeedVideoItem,
     SearchVideoResult,
     VideoMetadata
@@ -53,7 +54,7 @@ export interface FeedController {
     };
     getVideoMetadataFromCache: (videoId: string) => VideoMetadata | null;
     buildFinalFilteredFeedItems: (items: FeedVideoItem[], limit: number) => Promise<FeedVideoItem[]>;
-    fetchLoggedInSubscriptionsFeed: () => Promise<FeedVideoItem[]>;
+    fetchLoggedInSubscriptionsFeed: () => Promise<FeedFetchResult>;
 }
 
 export function createFeedController(dependencies: FeedControllerDependencies): FeedController {
@@ -69,19 +70,48 @@ export function createFeedController(dependencies: FeedControllerDependencies): 
         return buildFinalFilteredFeedItemsFromMetadata(items, limit, state.videoMetadataCacheByVideoId, persistVideoMetadataCacheToStorage);
     };
 
+    const toFeedStatusMessage = (
+        prefix: string,
+        result: Pick<FeedFetchResult, "failureReason" | "statusCode">
+    ): string => {
+        if (!result.failureReason) {
+            return "";
+        }
+
+        const detail = describeFeedFetchFailure(result.failureReason, "Request failed.");
+        const statusCodeSuffix = Number.isFinite(result.statusCode)
+            ? ` (HTTP ${result.statusCode})`
+            : "";
+        return `${prefix}: ${detail}${statusCodeSuffix}`;
+    };
+
+    const countRejectedByParser = (channelResult: ChannelFeedResult): number => {
+        return Object.values(channelResult.diagnostics.rejectedByReason)
+            .reduce((total, count) => total + (count || 0), 0);
+    };
+
     const loadChannelFeed = async (channelId: string): Promise<ChannelFeedResult> => {
         try {
-            const items = await fetchChannelFeedFromInnertube(channelId);
+            const result = await fetchChannelFeedFromInnertube(channelId);
             return {
                 channelId,
-                items,
-                hadError: false
+                items: result.items,
+                hadError: Boolean(result.failureReason),
+                failureReason: result.failureReason,
+                statusCode: result.statusCode,
+                diagnostics: result.diagnostics
             };
         } catch {
             return {
                 channelId,
                 items: [],
-                hadError: true
+                hadError: true,
+                failureReason: "unknown_error",
+                diagnostics: {
+                    totalVisitedNodes: 0,
+                    acceptedItems: 0,
+                    rejectedByReason: {}
+                }
             };
         }
     };
@@ -151,7 +181,7 @@ export function createFeedController(dependencies: FeedControllerDependencies): 
         });
     };
 
-    const fetchLoggedInSubscriptionsFeed = async (): Promise<FeedVideoItem[]> => {
+    const fetchLoggedInSubscriptionsFeed = async (): Promise<FeedFetchResult> => {
         return fetchLoggedInSubscriptionsFeedFromInnertube({
             isTvAuthAvailable: () => Boolean(state.tvAuthCache),
             getValidTvAccessToken: dependencies.getValidTvAccessToken,
@@ -170,12 +200,12 @@ export function createFeedController(dependencies: FeedControllerDependencies): 
             renderFeed();
 
             try {
-                const initialItems = await fetchLoggedInHomeFeed({
+                const homeResult = await fetchLoggedInHomeFeed({
                     isTvAuthAvailable: () => Boolean(state.tvAuthCache),
                     getValidTvAccessToken: dependencies.getValidTvAccessToken,
                     refreshTvAccessToken: dependencies.refreshTvAccessToken
                 });
-                const items = await buildFinalFilteredFeedItems(initialItems, HOME_ITEMS_LIMIT);
+                const items = await buildFinalFilteredFeedItems(homeResult.items, HOME_ITEMS_LIMIT);
                 if (refreshId !== state.feedRefreshSequence) {
                     return;
                 }
@@ -183,7 +213,13 @@ export function createFeedController(dependencies: FeedControllerDependencies): 
                 state.feedState.items = items;
                 state.feedState.isLoading = false;
                 state.feedState.warning = "";
-                state.feedState.status = items.length > 0 ? "" : HOME_EMPTY_TEXT;
+                if (homeResult.failureReason) {
+                    state.feedState.status = toFeedStatusMessage("Could not load home recommendations", homeResult);
+                } else if (homeResult.items.length > 0 && items.length === 0) {
+                    state.feedState.status = "No playable home recommendations available.";
+                } else {
+                    state.feedState.status = items.length > 0 ? "" : HOME_EMPTY_TEXT;
+                }
 
                 renderFeed();
             } catch (error) {
@@ -247,12 +283,22 @@ export function createFeedController(dependencies: FeedControllerDependencies): 
             return;
         }
         const failedWithoutCacheCount = channelResults.filter((result) => result.hadError && result.items.length === 0).length;
+        const parseEmptyCount = channelResults.filter((result) => result.failureReason === "parse_empty").length;
+        const parserRejectedChannelCount = channelResults.filter((result) => {
+            return result.items.length === 0 && countRejectedByParser(result) > 0;
+        }).length;
 
         state.feedState.items = filteredItems;
         state.feedState.isLoading = false;
-        state.feedState.status = filteredItems.length > 0
-            ? ""
-            : "No recent uploads found for your channels.";
+        if (filteredItems.length > 0) {
+            state.feedState.status = "";
+        } else if (parseEmptyCount > 0 || parserRejectedChannelCount > 0) {
+            state.feedState.status = "Could not find playable videos in YouTube response.";
+        } else if (failedWithoutCacheCount > 0) {
+            state.feedState.status = "Could not load latest uploads.";
+        } else {
+            state.feedState.status = "No recent uploads found for your channels.";
+        }
 
         if (failedWithoutCacheCount > 0) {
             state.feedState.warning = `Could not load ${failedWithoutCacheCount} channel${failedWithoutCacheCount === 1 ? "" : "s"}.`;

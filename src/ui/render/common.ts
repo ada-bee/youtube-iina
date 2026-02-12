@@ -183,9 +183,12 @@ export function createPlayableVideoListItem(dependencies: PlayableVideoListItemD
     item.className = classes;
     makeCardPlayable(item, onPlay);
 
+    const safeTitle = title.trim() || "Unknown title";
+    const safeChannelLine = presentation.channelLine.trim() || emptyChannelFallback || "Unknown channel";
+
     const thumbWrapper = createPlayableThumbnailWrapper(
         presentation.thumbnailUrl,
-        `${title} thumbnail`,
+        `${safeTitle} thumbnail`,
         presentation.durationLabel
     );
     item.append(thumbWrapper);
@@ -195,11 +198,11 @@ export function createPlayableVideoListItem(dependencies: PlayableVideoListItemD
 
     const titleElement = document.createElement("p");
     titleElement.className = "yt-item-title yt-item-title-video";
-    titleElement.textContent = title;
+    titleElement.textContent = safeTitle;
 
     const channel = document.createElement("p");
     channel.className = "yt-item-meta yt-item-channel";
-    channel.textContent = presentation.channelLine || emptyChannelFallback;
+    channel.textContent = safeChannelLine;
 
     const stats = document.createElement("p");
     stats.className = "yt-item-meta yt-item-stats";
@@ -244,7 +247,7 @@ export function renderPlayableVideoList(dependencies: RenderPlayableVideoListDep
     onUpdateLoadingIndicators();
 
     if (status) {
-        const statusText = state.warning || state.status;
+        const statusText = (state.warning || state.status || "").trim();
         status.hidden = !statusText;
         status.textContent = statusText;
         status.classList.toggle("yt-status-warning", Boolean(state.warning));

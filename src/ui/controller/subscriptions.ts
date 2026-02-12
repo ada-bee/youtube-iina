@@ -1,8 +1,9 @@
 import { SUBSCRIPTIONS_EMPTY_TEXT, SUBSCRIPTIONS_ITEMS_LIMIT } from "../constants";
 import { subscriptionsEmptyState, subscriptionsList, subscriptionsStatus } from "../dom";
+import { describeFeedFetchFailure } from "../innertube/feedBrowse";
 import { renderSubscriptions as renderSubscriptionsView } from "../render/subscriptions";
 import { state } from "../state";
-import type { FeedVideoItem } from "../types";
+import type { FeedFetchResult, FeedVideoItem } from "../types";
 
 interface SubscriptionsControllerDependencies {
     updateActiveViewLoadingIndicators: () => void;
@@ -14,7 +15,7 @@ interface SubscriptionsControllerDependencies {
         channelLine: string;
         statsLine: string;
     };
-    fetchLoggedInSubscriptionsFeed: () => Promise<FeedVideoItem[]>;
+    fetchLoggedInSubscriptionsFeed: () => Promise<FeedFetchResult>;
     buildFinalFilteredFeedItems: (items: FeedVideoItem[], limit: number) => Promise<FeedVideoItem[]>;
 }
 
@@ -60,15 +61,24 @@ export function createSubscriptionsController(dependencies: SubscriptionsControl
         renderSubscriptions();
 
         try {
-            const initialItems = await dependencies.fetchLoggedInSubscriptionsFeed();
-            const items = await dependencies.buildFinalFilteredFeedItems(initialItems, SUBSCRIPTIONS_ITEMS_LIMIT);
+            const subscriptionsResult = await dependencies.fetchLoggedInSubscriptionsFeed();
+            const items = await dependencies.buildFinalFilteredFeedItems(subscriptionsResult.items, SUBSCRIPTIONS_ITEMS_LIMIT);
             if (refreshId !== state.subscriptionsRefreshSequence) {
                 return;
             }
 
             state.subscriptionsState.isLoading = false;
             state.subscriptionsState.items = items;
-            state.subscriptionsState.status = items.length > 0 ? "" : SUBSCRIPTIONS_EMPTY_TEXT;
+            if (subscriptionsResult.failureReason) {
+                const statusCodeSuffix = Number.isFinite(subscriptionsResult.statusCode)
+                    ? ` (HTTP ${subscriptionsResult.statusCode})`
+                    : "";
+                state.subscriptionsState.status = `Could not load subscriptions: ${describeFeedFetchFailure(subscriptionsResult.failureReason, "Request failed.")}${statusCodeSuffix}`;
+            } else if (subscriptionsResult.items.length > 0 && items.length === 0) {
+                state.subscriptionsState.status = "No playable subscription videos available.";
+            } else {
+                state.subscriptionsState.status = items.length > 0 ? "" : SUBSCRIPTIONS_EMPTY_TEXT;
+            }
             state.subscriptionsState.warning = "";
             renderSubscriptions();
         } catch (error) {
