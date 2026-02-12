@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Preferences</title>
+</head>
+<body>
+    <div class="pref-section">
+        <label>
+            <input type="checkbox" data-type="bool" data-pref-key="sponsorBlockEnabled" />
+            Enable SponsorBlock
+        </label>
+        <p class="small secondary pref-help">
+            Fetch SponsorBlock segments for YouTube playback.
+        </p>
+    </div>
+
+    <div class="pref-section">
+        <div>SponsorBlock Segments</div>
+        <p class="small secondary pref-help" style="margin-bottom: 10px;">
+            ignore = do nothing, ask = show skip button, skip = auto skip segment.
+        </p>
+        <div style="display: grid; gap: 10px;">
+            <div>
+                <div>Sponsor</div>
+                <label><input type="radio" name="sponsorSegmentAction" value="ignore" /> ignore</label>
+                <label><input type="radio" name="sponsorSegmentAction" value="ask" /> ask</label>
+                <label><input type="radio" name="sponsorSegmentAction" value="skip" /> skip</label>
+            </div>
+            <div>
+                <div>Unpaid/self promotion</div>
+                <label><input type="radio" name="selfPromoSegmentAction" value="ignore" /> ignore</label>
+                <label><input type="radio" name="selfPromoSegmentAction" value="ask" /> ask</label>
+                <label><input type="radio" name="selfPromoSegmentAction" value="skip" /> skip</label>
+            </div>
+            <div>
+                <div>Preview/Recap</div>
+                <label><input type="radio" name="previewSegmentAction" value="ignore" /> ignore</label>
+                <label><input type="radio" name="previewSegmentAction" value="ask" /> ask</label>
+                <label><input type="radio" name="previewSegmentAction" value="skip" /> skip</label>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function bindSegmentActionRadios() {
+            var iinaApi = window.iina;
+            var preferences = iinaApi && iinaApi.preferences;
+            if (!preferences || typeof preferences.get !== "function" || typeof preferences.set !== "function") {
+                return;
+            }
+
+            var allowed = {
+                ignore: true,
+                ask: true,
+                skip: true
+            };
+
+            var groups = [
+                { name: "sponsorSegmentAction", fallback: "ask" },
+                { name: "selfPromoSegmentAction", fallback: "ignore" },
+                { name: "previewSegmentAction", fallback: "ignore" }
+            ];
+
+            var normalize = function(value, fallback) {
+                var text = String(value || "").trim();
+                if (allowed[text]) {
+                    return text;
+                }
+                return fallback;
+            };
+
+            var readPreference = function(key, callback) {
+                try {
+                    if (preferences.get.length >= 2) {
+                        preferences.get(key, function(value) {
+                            callback(value);
+                        });
+                    } else {
+                        callback(preferences.get(key));
+                    }
+                } catch (_error) {
+                    callback(undefined);
+                }
+            };
+
+            groups.forEach(function(group) {
+                var radios = Array.prototype.slice.call(
+                    document.querySelectorAll('input[type="radio"][name="' + group.name + '"]')
+                );
+                if (!radios.length) {
+                    return;
+                }
+
+                var applyValue = function(value) {
+                    var normalized = normalize(value, group.fallback);
+                    radios.forEach(function(radio) {
+                        radio.checked = radio.value === normalized;
+                    });
+                    return normalized;
+                };
+
+                readPreference(group.name, function(storedValue) {
+                    var normalized = applyValue(storedValue);
+                    var storedText = String(storedValue || "").trim();
+                    if (!allowed[storedText]) {
+                        preferences.set(group.name, normalized);
+                    }
+                });
+
+                radios.forEach(function(radio) {
+                    radio.addEventListener("change", function() {
+                        if (!radio.checked) {
+                            return;
+                        }
+
+                        var normalized = applyValue(radio.value);
+                        preferences.set(group.name, normalized);
+                    });
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

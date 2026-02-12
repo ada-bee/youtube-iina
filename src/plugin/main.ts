@@ -9,8 +9,9 @@ import type {
 import { MESSAGE_NAMES } from "../shared/messages";
 import { installPlaybackHookScaffolding } from "./hooks";
 import { handlePlayItem } from "./playback";
+import { createSponsorBlockController } from "./sponsorblock";
 
-const { console, event, sidebar, global, http, utils, mpv } = iina as any;
+const { console, event, sidebar, global, http, utils, mpv, overlay, preferences } = iina as any;
 
 const SHOW_SIDEBAR_DELAY_MS = 300;
 const MAX_HTTP_RESPONSE_TEXT = 120000;
@@ -48,6 +49,7 @@ console.log("YouTube: Plugin loaded");
 let windowReady = false;
 let pendingShowSidebar = false;
 let sidebarVisible = false;
+let sponsorBlockController: ReturnType<typeof createSponsorBlockController> | null = null;
 
 function getSidebarVisibility(): boolean {
     const sidebarWithVisibility = sidebar as typeof sidebar & { isVisible?: () => boolean };
@@ -100,6 +102,15 @@ event.on("iina.window-loaded", () => {
 
     sidebar.loadFile("ui/sidebar.html");
 
+    sponsorBlockController = createSponsorBlockController({
+        console,
+        mpv,
+        http,
+        overlay,
+        preferences
+    });
+    sponsorBlockController.start();
+
     installPlaybackHookScaffolding({
         event,
         mpv,
@@ -114,6 +125,10 @@ event.on("iina.window-loaded", () => {
 
         console.log("YouTube: Splash loaded, showing sidebar");
         showSidebarWithNotification();
+    });
+
+    event.on("iina.window-will-close", () => {
+        sponsorBlockController?.stop();
     });
 
     sidebar.onMessage(MESSAGE_NAMES.PlayItem, (data: PlayItemPayload) => {

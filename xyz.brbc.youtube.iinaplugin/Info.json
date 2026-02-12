@@ -1,9 +1,9 @@
 {
   "name": "YouTube",
   "identifier": "xyz.brbc.youtube",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "ghRepo": "ada-bee/youtube-iina",
-  "ghVersion": 2,
+  "ghVersion": 3,
   "description": "Browse and play YouTube videos in IINA",
   "author": {
     "name": "ada-bee"
@@ -13,17 +13,26 @@
   "sidebarTab": {
     "name": "YouTube"
   },
+  "preferencesPage": "ui/preferences.html",
+  "preferenceDefaults": {
+    "sponsorBlockEnabled": false,
+    "sponsorSegmentAction": "ask",
+    "selfPromoSegmentAction": "ignore",
+    "previewSegmentAction": "ignore"
+  },
   "permissions": [
     "network-request",
     "sidebar",
     "show-alert",
     "show-osd",
-    "file-system"
+    "file-system",
+    "video-overlay"
   ],
   "allowedDomains": [
     "youtube.com",
     "www.youtube.com",
     "i.ytimg.com",
-    "yt3.ggpht.com"
+    "yt3.ggpht.com",
+    "sponsor.ajay.app"
   ]
 }
