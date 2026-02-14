@@ -2,6 +2,8 @@
 
 Plugin for browsing and playing YouTube videos in IINA from a sidebar UI. Includes anonymous mode (favorites-based feed + search) and logged-in mode (Home + Subscriptions).
 
+If you like this plugin you might also be interested in [Jellyfin IINA Plugin](https://github.com/ada-bee/jellyfin-iina).
+
 ## Installation
 
 1. Make sure you have the [online-media plugin](https://github.com/iina/plugin-online-media) (`yt-dlp`) installed and working. Before using this plugin, confirm it works by opening and playing a video directly from a URL in IINA.
@@ -25,6 +27,10 @@ Plugin for browsing and playing YouTube videos in IINA from a sidebar UI. Includ
 - Channel/video search and channel favorites management.
 - Playback in IINA by opening standard YouTube watch URLs.
 - Optional SponsorBlock integration with per-segment controls (`ignore`, `ask`, `skip`) for Sponsor, Unpaid/Self Promotion, and Preview/Recap.
+
+## Screenshot
+
+![YouTube IINA Plugin screenshot](images/screenshot.png)
 
 ## Planned features
 
